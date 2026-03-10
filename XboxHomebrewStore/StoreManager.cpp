@@ -1,5 +1,5 @@
 #include "StoreManager.h"
-#include "WebManager.h"
+#include "BinManager.h"
 #include "Models.h"
 #include "Math.h"
 #include "Defines.h"
@@ -23,11 +23,19 @@ bool StoreManager::Init()
     mCategoryIndex = 0;
     mWindowStoreItemOffset = 0;
     mWindowStoreItemCount = 0;
-    
+
     mWindowStoreItems = (StoreItem*)malloc(sizeof(StoreItem) * Context::GetGridCells());
     memset(mWindowStoreItems, 0, sizeof(StoreItem) * Context::GetGridCells());
     mTempStoreItems = (StoreItem*)malloc(sizeof(StoreItem) * Context::GetGridCols());
     memset(mTempStoreItems, 0, sizeof(StoreItem) * Context::GetGridCols());
+
+    if (!BinManager::IsBinPresent())
+    {
+        if (!BinManager::TryDownloadBin())
+        {
+            return false;
+        }
+    }
 
     if (LoadCategories() == false)
     {
@@ -37,9 +45,9 @@ bool StoreManager::Init()
     return RefreshApplications();
 }
 
-int32_t StoreManager::GetCategoryCount() 
-{ 
-    return mCategories.size(); 
+int32_t StoreManager::GetCategoryCount()
+{
+    return mCategories.size();
 }
 
 int32_t StoreManager::GetCategoryIndex()
@@ -53,19 +61,19 @@ void StoreManager::SetCategoryIndex(int32_t categoryIndex)
     RefreshApplications();
 }
 
-StoreCategory* StoreManager::GetStoreCategory(int32_t categoryIndex) 
-{ 
-    return &mCategories[categoryIndex]; 
+StoreCategory* StoreManager::GetStoreCategory(int32_t categoryIndex)
+{
+    return &mCategories[categoryIndex];
 }
 
-int32_t StoreManager::GetSelectedCategoryTotal() 
-{ 
-    return mCategories[mCategoryIndex].count; 
+int32_t StoreManager::GetSelectedCategoryTotal()
+{
+    return mCategories[mCategoryIndex].count;
 }
 
-std::string StoreManager::GetSelectedCategoryName() 
-{ 
-    return mCategories[mCategoryIndex].name; 
+std::string StoreManager::GetSelectedCategoryName()
+{
+    return mCategories[mCategoryIndex].name;
 }
 
 int32_t StoreManager::GetWindowStoreItemOffset()
@@ -80,7 +88,7 @@ int32_t StoreManager::GetWindowStoreItemCount()
 
 StoreItem* StoreManager::GetWindowStoreItem(int32_t storeItemIndex)
 {
-    return &mWindowStoreItems[storeItemIndex]; 
+    return &mWindowStoreItems[storeItemIndex];
 }
 
 bool StoreManager::HasPrevious()
@@ -164,7 +172,6 @@ bool StoreManager::LoadNext()
     }
 
     int32_t newWindowStoreItemOffset = mWindowStoreItemOffset + Context::GetGridCols();
-
     int32_t tempOffset = Context::GetGridCols() * Math::MaxInt32(0, Context::GetGridRows() - 1);
 
     int32_t loadedCount = 0;
@@ -238,14 +245,14 @@ bool StoreManager::TryGetStoreVersions(std::string appId, StoreVersions* storeVe
     }
 
     VersionsResponse versionsResponse;
-    if (WebManager::TryGetVersions(appId, versionsResponse) == false)
+    if (BinManager::TryGetVersions(appId, versionsResponse) == false)
     {
         return false;
     }
 
     storeVersions->appId = storeItem->appId;
     storeVersions->name = versionsResponse.name;
-    storeVersions->author =versionsResponse.author;
+    storeVersions->author = versionsResponse.author;
     storeVersions->description = versionsResponse.description;
     storeVersions->latestVersion = versionsResponse.latestVersion;
     storeVersions->cover = nullptr;
@@ -307,15 +314,12 @@ bool StoreManager::LoadCategories()
     mCategories.clear();
 
     CategoriesResponse categoriesResponse;
-    if (!WebManager::TryGetCategories(categoriesResponse))
+    if (!BinManager::TryGetCategories(categoriesResponse))
     {
         return false;
     }
-    
-    StoreCategory allApps;
-    allApps.name = "All Apps";
-    allApps.count = 0;
 
+    // BinManager::TryGetCategories already prepends "All Apps" at index 0
     for (int32_t i = 0; i < (int32_t)categoriesResponse.size(); i++)
     {
         StoreCategory storeCategory;
@@ -323,11 +327,8 @@ bool StoreManager::LoadCategories()
         storeCategory.nameScrollState.active = false;
         storeCategory.count = categoriesResponse[i].count;
         mCategories.push_back(storeCategory);
-
-        allApps.count += categoriesResponse[i].count;
     }
 
-    mCategories.insert(mCategories.begin(), allApps);
     return true;
 }
 
@@ -336,7 +337,7 @@ bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, i
     std::string categoryFilter = mCategoryIndex == 0 ? "" : mCategories[mCategoryIndex].name;
 
     AppsResponse response;
-    if (!WebManager::TryGetApps(response, offset, count, categoryFilter, ""))
+    if (!BinManager::TryGetApps(response, offset, count, categoryFilter, ""))
     {
         return false;
     }
@@ -345,7 +346,7 @@ bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, i
     *loadedCount = itemCount;
 
     StoreItem* storeItems = (StoreItem*)dest;
-    for (int32_t i = 0; i < itemCount; i++ )
+    for (int32_t i = 0; i < itemCount; i++)
     {
         AppItem* appItem = &response.items[i];
         storeItems[i].appId = appItem->id;
@@ -385,8 +386,8 @@ bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, i
 
 bool StoreManager::RefreshApplications()
 {
-	if (!LoadCategories())
-    return false;
+    if (!LoadCategories())
+        return false;
 
     for (int32_t i = 0; i < mWindowStoreItemCount; i++)
     {
@@ -404,7 +405,7 @@ bool StoreManager::RefreshApplications()
     {
         return false;
     }
-    
+
     mWindowStoreItemCount = loadedCount;
     return true;
 }

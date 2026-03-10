@@ -348,6 +348,9 @@
 				RelativePath=".\SocketUtility.cpp">
 			</File>
 			<File
+				RelativePath=".\BinManager.cpp">
+			</File>
+			<File
 				RelativePath=".\StoreManager.cpp">
 			</File>
 			<File
@@ -584,6 +587,9 @@
 			</File>
 			<File
 				RelativePath=".\stb_image.h">
+			</File>
+			<File
+				RelativePath=".\BinManager.h">
 			</File>
 			<File
 				RelativePath=".\StoreManager.h">
