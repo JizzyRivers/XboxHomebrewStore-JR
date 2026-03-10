@@ -1,8 +1,9 @@
 #include "BinManager.h"
 #include "Debug.h"
 #include "WebManager.h"
+#include "Main.h"
 
-#include <windows.h>
+#include <xtl.h>
 #include <stdint.h>
 #include <string.h>
 #include <string>
